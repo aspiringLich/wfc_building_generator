@@ -1,0 +1,13 @@
+[package]
+name = "wfc-building-generator"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+autodefault = "2.0.0"
+bevy = "0.8.1"
+bevy_ecs_tilemap = "0.7.0"
+bevy_prototype_lyon = "0.6.0"
+lazy_static = "1.4.0"
