@@ -1,9 +1,11 @@
 use autodefault::autodefault;
 use bevy::{prelude::*, render::texture::ImageSettings};
 use bevy_ecs_tilemap::prelude::*;
-use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_pancam::{PanCam, PanCamPlugin};
+
+mod cursor;
+use cursor::{cursor_event_tilemap, CursorEvent};
 
 /*
 TODO: Test the comments work
@@ -22,46 +24,50 @@ fn main() {
             height: 720.0,
             title: String::from("Building Generator"),
         })
+        // base resources
         .insert_resource(ImageSettings::default_nearest())
+        // base events
+        .add_event::<CursorEvent>()
+        // base plugins
         .add_plugins(DefaultPlugins)
-        .add_plugin(EguiPlugin)
         .add_plugin(WorldInspectorPlugin::new())
         .add_plugin(TilemapPlugin)
         .add_plugin(PanCamPlugin::default())
+        // startup system(s)
         .add_startup_system(setup_sys)
+        // systems
+        .add_system(cursor_event_tilemap)
         .run();
 }
+
+/// size of the tilemap, in tiles
+pub const TILEMAP_SIZE: TilemapSize = TilemapSize { x: 8, y: 8 };
+/// size of the individual tiles in pixels
+pub const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 8.0, y: 8.0 };
+/// size of the grid the tiles will be laid out on
+pub const GRID_SIZE: TilemapGridSize = TilemapGridSize { x: 8.0, y: 8.0 };
 
 #[autodefault]
 fn setup_sys(mut commands: Commands, asset_server: Res<AssetServer>) {
     // spawn camera
     commands
-        .spawn_bundle(Camera2dBundle::default())
+        .spawn_bundle(Camera2dBundle {
+            // ! fyi: magic number
+            projection: OrthographicProjection { scale: 0.25 },
+        })
         .insert(PanCam {
             grab_buttons: vec![MouseButton::Middle],
-        });
+        })
+        .insert(MainCamera);
 
     let texture_handle: Handle<Image> = asset_server.load("tile.png");
 
-    let tilemap_size = TilemapSize { x: 8, y: 8 };
-
-    // Create a tilemap entity a little early.
-    // We want this entity early because we need to tell each tile which tilemap entity
-    // it is associated with. This is done with the TilemapId component on each tile.
-    // Eventually, we will insert the `TilemapBundle` bundle on the entity, which
-    // will contain various necessary components, such as `TileStorage`.
     let tilemap_entity = commands.spawn().id();
-
-    // To begin creating the map we will need a `TileStorage` component.
-    // This component is a grid of tile entities and is used to help keep track of individual
-    // tiles in the world. If you have multiple layers of tiles you would have a tilemap entity
-    // per layer, each with their own `TileStorage` component.
-    let mut tile_storage = TileStorage::empty(tilemap_size);
+    let mut tile_storage = TileStorage::empty(TILEMAP_SIZE);
 
     // Spawn the elements of the tilemap.
-    // Alternatively, you can use helpers::fill_tilemap.
-    for x in 0..tilemap_size.x {
-        for y in 0..tilemap_size.y {
+    for x in 0..TILEMAP_SIZE.x {
+        for y in 0..TILEMAP_SIZE.y {
             let tile_pos = TilePos { x, y };
             let tile_entity = commands
                 .spawn()
@@ -69,23 +75,37 @@ fn setup_sys(mut commands: Commands, asset_server: Res<AssetServer>) {
                     position: tile_pos,
                     tilemap_id: TilemapId(tilemap_entity),
                 })
+                .insert(Name::new("Tile"))
                 .id();
+
+            // add under the tilemap entity as a child (to avoid clutter)
+            commands
+                .entity(tilemap_entity)
+                .push_children(&[tile_entity]);
             tile_storage.set(&tile_pos, Some(tile_entity));
         }
     }
 
-    let tile_size = TilemapTileSize { x: 8.0, y: 8.0 };
-    let grid_size = TilemapGridSize { x: 8.0, y: 8.0 };
-
+    // spawn the tilemap
     commands
         .entity(tilemap_entity)
         .insert_bundle(TilemapBundle {
-            grid_size,
-            size: tilemap_size,
+            grid_size: GRID_SIZE,
+            size: TILEMAP_SIZE,
             storage: tile_storage,
             texture: TilemapTexture(texture_handle),
-            tile_size,
-            transform: get_centered_transform_2d(&tilemap_size, &tile_size, 0.0),
+            tile_size: TILE_SIZE,
+            transform: get_centered_transform_2d(&TILEMAP_SIZE, &TILE_SIZE, 0.0),
             ..Default::default()
-        });
+        })
+        .insert(Name::new("Main Tilemap"))
+        .insert(MainTilemap);
 }
+
+/// Used to help identify our main tilemap
+#[derive(Component)]
+pub struct MainTilemap;
+
+/// Used to help identify our main camera
+#[derive(Component)]
+pub struct MainCamera;

@@ -8,9 +8,11 @@ edition = "2021"
 [dependencies]
 autodefault = "2.0.0"
 bevy = "0.8.1"
+bevy-debug-text-overlay = "3.0"
 bevy_ecs_tilemap = "0.7.0"
 bevy_egui = "0.16.1"
 bevy-inspector-egui = "0.12.1"
 bevy_pancam = { version = "0.6.1", features = ["bevy_egui"] }
+iyes_loopless = "0.7.1"
 # bevy_prototype_lyon = "0.6.0"
 lazy_static = "1.4.0"
