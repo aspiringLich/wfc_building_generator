@@ -1,5 +1,5 @@
 [package]
-name = "wfc-building-generator"
+name = "wfc_building_generator"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,5 +9,8 @@ edition = "2021"
 autodefault = "2.0.0"
 bevy = "0.8.1"
 bevy_ecs_tilemap = "0.7.0"
-bevy_prototype_lyon = "0.6.0"
+bevy_egui = "0.16.1"
+bevy-inspector-egui = "0.12.1"
+bevy_pancam = { version = "0.6.1", features = ["bevy_egui"] }
+# bevy_prototype_lyon = "0.6.0"
 lazy_static = "1.4.0"
