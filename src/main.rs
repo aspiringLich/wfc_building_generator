@@ -1,11 +1,13 @@
 use autodefault::autodefault;
 use bevy::{prelude::*, render::texture::ImageSettings};
+use bevy_debug_text_overlay::OverlayPlugin;
 use bevy_ecs_tilemap::prelude::*;
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_pancam::{PanCam, PanCamPlugin};
+use iyes_loopless::prelude::*;
 
 mod cursor;
-use cursor::{cursor_event_tilemap, CursorEvent};
+use cursor::{cursor_event_tilemap, highlight_tile_test, CursorEvent};
 
 /*
 TODO: Test the comments work
@@ -33,10 +35,12 @@ fn main() {
         .add_plugin(WorldInspectorPlugin::new())
         .add_plugin(TilemapPlugin)
         .add_plugin(PanCamPlugin::default())
+        .add_plugin(OverlayPlugin { font_size: 32.0 })
         // startup system(s)
         .add_startup_system(setup_sys)
         // systems
         .add_system(cursor_event_tilemap)
+        .add_system(highlight_tile_test.run_on_event::<CursorEvent>())
         .run();
 }
 
@@ -46,6 +50,14 @@ pub const TILEMAP_SIZE: TilemapSize = TilemapSize { x: 8, y: 8 };
 pub const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 8.0, y: 8.0 };
 /// size of the grid the tiles will be laid out on
 pub const GRID_SIZE: TilemapGridSize = TilemapGridSize { x: 8.0, y: 8.0 };
+
+/// Used to help identify our main tilemap
+#[derive(Component)]
+pub struct MainTilemap;
+
+/// Used to help identify our main camera
+#[derive(Component)]
+pub struct MainCamera;
 
 #[autodefault]
 fn setup_sys(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -74,6 +86,7 @@ fn setup_sys(mut commands: Commands, asset_server: Res<AssetServer>) {
                 .insert_bundle(TileBundle {
                     position: tile_pos,
                     tilemap_id: TilemapId(tilemap_entity),
+                    color: TileColor(Color::WHITE),
                 })
                 .insert(Name::new("Tile"))
                 .id();
@@ -101,11 +114,3 @@ fn setup_sys(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(Name::new("Main Tilemap"))
         .insert(MainTilemap);
 }
-
-/// Used to help identify our main tilemap
-#[derive(Component)]
-pub struct MainTilemap;
-
-/// Used to help identify our main camera
-#[derive(Component)]
-pub struct MainCamera;

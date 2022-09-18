@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use bevy::{prelude::*, render::camera::RenderTarget};
 use bevy_ecs_tilemap::prelude::*;
 
@@ -95,5 +93,27 @@ pub fn cursor_event_tilemap(
         } else {
             *prev_pos = None;
         }
+    }
+}
+
+pub fn highlight_tile_test(
+    mut commands: Commands,
+    mut cursor_event: EventReader<CursorEvent>,
+    // query the tilemap for the tile storage
+    mut q_tilemap: Query<&TileStorage, With<MainTilemap>>,
+    // query an entity for TileColor
+    mut q_tilecolor: Query<&mut TileColor>,
+) {
+    let mut tile = q_tilemap.single_mut();
+    for event in cursor_event.iter() {
+        let mut get_id = |pos| tile.get(pos).unwrap();
+        match event {
+            CursorEvent::MovedOffTile(pos) => {
+                *q_tilecolor.get_mut(get_id(pos)).unwrap() = TileColor(Color::WHITE)
+            }
+            CursorEvent::MovedOnTile(pos) => {
+                *q_tilecolor.get_mut(get_id(pos)).unwrap() = TileColor(Color::GREEN)
+            }
+        };
     }
 }

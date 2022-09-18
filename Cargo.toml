@@ -16,3 +16,7 @@ bevy_pancam = { version = "0.6.1", features = ["bevy_egui"] }
 iyes_loopless = "0.7.1"
 # bevy_prototype_lyon = "0.6.0"
 lazy_static = "1.4.0"
+
+# release mode for dependencies
+[profile.dev.package."*"]
+opt-level = 3
