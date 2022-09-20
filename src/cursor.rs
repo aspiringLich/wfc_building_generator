@@ -1,4 +1,5 @@
-use bevy::{prelude::*, render::camera::RenderTarget};
+use autodefault::autodefault;
+use bevy::{ecs::system::CommandQueue, prelude::*, render::camera::RenderTarget};
 use bevy_ecs_tilemap::prelude::*;
 
 use crate::{MainCamera, MainTilemap, GRID_SIZE, TILEMAP_SIZE};
@@ -25,6 +26,8 @@ pub fn cursor_event_tilemap(
     mut prev_pos: Local<Option<TilePos>>,
     // event queue for CursorEvent
     mut cursor_event: EventWriter<CursorEvent>,
+    // resource (which tile is the cursor currently on if any)
+    mut current_cursor_pos: ResMut<Option<TilePos>>,
 ) {
     // get the camera info and transform
     let (camera, camera_transform) = q_camera.single();
@@ -79,6 +82,9 @@ pub fn cursor_event_tilemap(
             neq = pos.x != x || pos.y != y;
             if neq || !valid {
                 cursor_event.send(CursorEvent::MovedOffTile(pos));
+                if current_cursor_pos.is_some() {
+                    *current_cursor_pos = None;
+                }
                 // eprintln!("Moved off ({}, {})", pos.x, pos.y);
             }
         }
@@ -87,6 +93,7 @@ pub fn cursor_event_tilemap(
         if valid {
             if neq || !prev_valid {
                 cursor_event.send(CursorEvent::MovedOnTile(tile_pos));
+                *current_cursor_pos = Some(tile_pos)
                 // eprintln!("Moved on ({}, {})", tile_pos.x, tile_pos.y);
             }
             *prev_pos = Some(tile_pos);
@@ -96,23 +103,54 @@ pub fn cursor_event_tilemap(
     }
 }
 
-pub fn highlight_tile_test(
-    mut commands: Commands,
+/// a struct to hold the selector entity
+pub(crate) struct SelectorEntity(Entity);
+
+impl FromWorld for SelectorEntity {
+    #[autodefault]
+    fn from_world(world: &mut World) -> Self {
+        let texture = world.resource::<AssetServer>().load("selected.png");
+        let entity = world
+            .spawn()
+            .insert_bundle(SpriteBundle {
+                texture,
+                visibility: Visibility { is_visible: false },
+            })
+            .insert(Name::new("Selector"))
+            .id();
+
+        SelectorEntity(entity)
+    }
+}
+
+/// update a tile selector to show over which tile the mouse is hovering
+pub(crate) fn tile_selector(
     mut cursor_event: EventReader<CursorEvent>,
-    // query the tilemap for the tile storage
-    mut q_tilemap: Query<&TileStorage, With<MainTilemap>>,
     // query an entity for TileColor
     mut q_tilecolor: Query<&mut TileColor>,
+    time: Res<Time>,
+    // struct that holds the selector entity
+    selector_entity: Local<SelectorEntity>,
+    mut q_visibility: Query<&mut Visibility>,
+    // hold the conflicting transform query
+    mut q_transform: ParamSet<(Query<&mut Transform>, Query<&Transform, With<MainTilemap>>)>,
 ) {
-    let mut tile = q_tilemap.single_mut();
+    let entity = selector_entity.0;
+    let transform: &mut Transform = &mut *q_transform.p0().get_mut(entity).unwrap();
     for event in cursor_event.iter() {
-        let mut get_id = |pos| tile.get(pos).unwrap();
         match event {
-            CursorEvent::MovedOffTile(pos) => {
-                *q_tilecolor.get_mut(get_id(pos)).unwrap() = TileColor(Color::WHITE)
+            CursorEvent::MovedOffTile(_) => {
+                q_visibility.get_mut(entity).unwrap().is_visible = false;
             }
             CursorEvent::MovedOnTile(pos) => {
-                *q_tilecolor.get_mut(get_id(pos)).unwrap() = TileColor(Color::GREEN)
+                let tilemap_pos = q_transform.p1().single().translation;
+                q_transform.p0().get_mut(entity).unwrap().translation = tilemap_pos
+                    + Vec3::new(
+                        (pos.x as f32) * GRID_SIZE.x,
+                        (pos.y as f32) * GRID_SIZE.y,
+                        1.0,
+                    );
+                q_visibility.get_mut(entity).unwrap().is_visible = true;
             }
         };
     }

@@ -2,12 +2,16 @@ use autodefault::autodefault;
 use bevy::{prelude::*, render::texture::ImageSettings};
 use bevy_debug_text_overlay::OverlayPlugin;
 use bevy_ecs_tilemap::prelude::*;
+use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_pancam::{PanCam, PanCamPlugin};
 use iyes_loopless::prelude::*;
 
 mod cursor;
-use cursor::{cursor_event_tilemap, highlight_tile_test, CursorEvent};
+use cursor::{cursor_event_tilemap, tile_selector, CursorEvent};
+
+mod designer;
+use designer::block_selector_ui;
 
 /*
 TODO: Test the comments work
@@ -28,19 +32,23 @@ fn main() {
         })
         // base resources
         .insert_resource(ImageSettings::default_nearest())
+        .init_resource::<Option<TilePos>>()
         // base events
         .add_event::<CursorEvent>()
         // base plugins
         .add_plugins(DefaultPlugins)
-        .add_plugin(WorldInspectorPlugin::new())
+        .add_plugin(EguiPlugin)
+        .add_plugin(OverlayPlugin { font_size: 32.0 })
         .add_plugin(TilemapPlugin)
         .add_plugin(PanCamPlugin::default())
-        .add_plugin(OverlayPlugin { font_size: 32.0 })
+        .add_plugin(WorldInspectorPlugin::new())
         // startup system(s)
         .add_startup_system(setup_sys)
         // systems
         .add_system(cursor_event_tilemap)
-        .add_system(highlight_tile_test.run_on_event::<CursorEvent>())
+        .add_system(tile_selector)
+        .add_system(block_selector_ui)
+        // system sets
         .run();
 }
 
